@@ -16,6 +16,7 @@ class Autocomplete extends React.Component {
     this.handleSelectChange = this.handleChange.bind(this);
     }
 
+    //function used to power the autocomplete functionality
     getInfo = () => {
         const sanitized = this.sanitizeString(this.state.searchString);
         fetch(`https://nominatim.openstreetmap.org/search?q=${sanitized}&format=json&limit=5&accept-language=en,pl`, {
@@ -29,10 +30,12 @@ class Autocomplete extends React.Component {
             this.setState({results: res})
           })
       }
-  
+    
+    
     handleChange(event) {
     this.setState({searchString: event.target.value}, () => {
         if (this.state.searchString && this.state.searchString.length > 1) {
+            //every other character the Nominatim API is queried for locations matching the search string
             if (this.state.searchString.length % 2 === 0) {
                 this.getInfo()
             }
@@ -44,29 +47,26 @@ class Autocomplete extends React.Component {
         this.setState({searchString: event.target.value})
     }
 
-    getDate = () => {
-        const currentDate = new Date();
-        return currentDate.getFullYear() + '-' + (parseInt(currentDate.getMonth() + 1)) + '-' + currentDate.getDate();
-    }
-
+    //spaces in string need to be replaced for it to be used in the url query string 
     sanitizeString = (data) => {
         var result = data.toString();
         return result.replace(/\s/g, '+');
     }
 
-    search = async (data) => {
 
+    search = async (data) => {
+        //state is reset after every search
         this.setState({searchString: '', results: [], errMsg: ''});
-  
         const sanitized = this.sanitizeString(data);
-  
+
         if(this.state.searchString.length < 1)
         {
           this.props.setErrMsg({APImsg: "You need to search for a location", lat: 0, lon: 0})
           return;
         }
-  
+        //try/catch block is used to prevent errors from disrupting the flow of the app
         try{
+          //Nomnatim API is queried with the specified location
           const coordinates = await fetch(`https://nominatim.openstreetmap.org/search?q=${sanitized}&format=json&limit=1&accept-language=en,pl`, {
             method: 'GET',
             headers: {
@@ -74,7 +74,8 @@ class Autocomplete extends React.Component {
               'Content-type': 'application/json'
             }
           }).then(res => res.json())
-    
+          
+          //NASA API is queried with coordinates obtained from Nominatim, specified date and an API key (demo key is used in this case)
           await fetch(`https://api.nasa.gov/planetary/earth/assets?api_key=${NASA_API_KEY}&lon=${coordinates[0].lon}&lat=${coordinates[0].lat}&date=${this.state.searchDate.getFullYear()}-${(parseInt(this.state.searchDate.getMonth(), 10) + 1)}-${this.state.searchDate.getDate()}&&dim=0.10`, {
               method: 'GET',
               headers: {
@@ -84,8 +85,10 @@ class Autocomplete extends React.Component {
             }).then(res => res.json())
           .then(res => {
             if(res.url)
+              //if the response contains an url, it is passed to the parent component
               this.props.setResult({nasaURL: res.url, lat: coordinates[0].lat, lon: coordinates[0].lon})
             else
+              //if there is no url, message sent by the API is passed instead
               this.props.setErrMsg({APImsg: res.msg, lat: coordinates[0].lat, lon: coordinates[0].lon})
           })
         }
